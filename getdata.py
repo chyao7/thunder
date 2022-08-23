@@ -1,11 +1,13 @@
+from efinance.stock import get_members
 from efinance.stock import get_realtime_quotes,get_quote_history
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 name = "上证指数"
 szcode = get_quote_history(name,fqt=1)["日期"]
-codes = get_realtime_quotes()
-codes = np.array(codes["股票代码"]).tolist()
+# codes = get_realtime_quotes()
+# codes = np.array(codes["股票代码"]).tolist()
+codes = get_members("中证200")["股票代码"]
 for code in tqdm(codes):
     data = get_quote_history(code,fqt=1) 
     if len(data)<365:
