@@ -66,18 +66,20 @@ def calculate(name,start,end,):
     features = pd.concat(all, axis=0)
     return features
 
-model_path = "./checkpoint/lgb2.pt"
-model = lgb.Booster(model_file=model_path)
-data = calculate("中证200","2022-01-01","2022-08-30")
-data = data.reset_index()
-print(data.head())
-pre = np.array(data)[:,1:-1]
-print(pre)
-res = model.predict(pre)
-data["res"] = res
-data = data[["date","code","res"]]
-data["code"]= data["code"].apply(lambda x:"%06d" %x)
-data.sort_values(by=["date", "res"], ascending=[True, False], inplace=True)
-print(data.head(10))
-d = data.groupby("date").head(3)
-d.to_csv("res.csv",index=None)
+def test():
+    model_path = "./checkpoint/lgb2.pt"
+    model = lgb.Booster(model_file=model_path)
+    data = calculate("中证200","2022-01-01","2022-08-30")
+    data = data.reset_index()
+    pre = np.array(data)[:,1:-1]
+    res = model.predict(pre)
+    data["res"] = res
+    data = data[["date","code","res"]]
+    data["code"]= data["code"].apply(lambda x:"%06d" %x)
+    data.sort_values(by=["date", "res"], ascending=[True, False], inplace=True)
+    d = data.groupby("date").head(3)
+    d.to_csv("res.csv",index=None)
+    return d
+
+if __name__ =="__main__":
+    test()

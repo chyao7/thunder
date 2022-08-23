@@ -118,7 +118,7 @@ class TestStrategy(bt.Strategy):
         self.order = None
 
 
-if __name__ == '__main__':
+def backtest():
     import matplotlib.pyplot as plt
     plt.rcParams['figure.figsize']=(22.8, 14.2)
     root = "./data"
@@ -161,3 +161,7 @@ if __name__ == '__main__':
     
     # )
     print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
+
+
+if __name__ == '__main__':
+    backtest()
