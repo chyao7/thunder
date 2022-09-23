@@ -146,7 +146,6 @@ def get_base_info(stock_codes: Union[str, List[str]]) -> Union[pd.Series, pd.Dat
 
     raise TypeError(f'所给的 {stock_codes} 不符合参数要求')
 
-
 def get_quote_history(stock_codes: Union[str, List[str]],
                       beg: str = '19000101',
                       end: str = '20500101',

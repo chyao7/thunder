@@ -20,6 +20,7 @@ def calculate():
         d = d.dropna()
         if len(d)<100:
             return
+   
         # 移动均线
         d["ema_30"] = ta.EMA(d.close, timeperiod=30)
         d["ema_10"] = ta.EMA(d.close, timeperiod=10)

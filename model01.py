@@ -31,7 +31,7 @@ def calculate(name,start,end,):
     @multitasking.task
     @retry(tries=3, delay=1)
     def process(d):
-        d.rename(columns = {"日期": "date","股票名称":"name","股票代码":"code","开盘":"open","收盘":"close","最高":"high","最低":"low","成交量":"volume"},  inplace=True)
+        d.rename(columns = {"日期": "date","股票名称":"name","股票代码":"code","开盘":"open","收盘":"close","最高":"high","最低":"low","成交量":"volume","振幅":"amplitude","换手率":"turnover","涨跌幅":"chg"},  inplace=True)
         d['date'] = pd.to_datetime(d['date'])
         d = d.set_index('date')
         d = d[start:end]
@@ -39,14 +39,46 @@ def calculate(name,start,end,):
         d = d.dropna()
         if len(d)<100:
             return
+
+        d["chg_3"] =  d.chg.rolling(3).mean()
+        d["chg_5"] =  d.chg.rolling(5).mean()
+        d["chg_7"] =  d.chg.rolling(7).mean()
+        d["chg_15"] =  d.chg.rolling(15).mean()
+        
+        d["chg_3_r"] = d.chg.rolling(3).mean()/d.chg.rolling(15).mean()
+        d["chg_3_r"] = d.chg/d.chg.rolling(3).mean()
+
+        d["amplitude_3"] = d.amplitude.rolling(3).mean()
+        d["amplitude_7"] = d.amplitude.rolling(7).mean()
+        d["amplitude_3_r"] = d.amplitude/d.amplitude.rolling(3).mean()
+        d["amplitude_7_r"] = d.amplitude/d.amplitude.rolling(7).mean()
+
+        d["turnover_3"] = d.turnover.rolling(3).mean()
+        d["turnover_7"] = d.turnover.rolling(7).mean()
+        d["turnover_3_r"] = d.turnover/d.turnover.rolling(3).mean()
+        d["turnover_7_r"] = d.turnover/d.turnover.rolling(7).mean()
+
+        d["volume_2"] = d.volume.rolling(2).mean()
+        d["volume_4"] = d.volume.rolling(4).mean()
+        d["volume_6"] = d.volume.rolling(6).mean()
+
+        d["volume_2_r"] = d.volume/d.volume.rolling(2).mean()
+        d["volume_4_r"] = d.volume/d.volume.rolling(4).mean()
+        d["volume_6_r"] = d.volume/d.volume.rolling(6).mean()
+
         # 移动均线
         d["ema_30"] = ta.EMA(d.close, timeperiod=30)
         d["ema_10"] = ta.EMA(d.close, timeperiod=10)
         d["ema_5"] = ta.EMA(d.close, timeperiod=5)
+        d["ema_3"] = ta.EMA(d.close, timeperiod=5)
         d["adrx_14"] = ta.ADXR(d.high, d.low, d.close, timeperiod=14)
+        d["adrx_8"] = ta.ADXR(d.high, d.low, d.close, timeperiod=8)
         d["adrx_5"] = ta.ADXR(d.high, d.low, d.close, timeperiod=5)
         d["apo"] = ta.APO(d.close, fastperiod=5, slowperiod=20, matype=0)
+        d["apo_37"] = ta.APO(d.close, fastperiod=3, slowperiod=7, matype=0)
+
         d["CCI_14"] = ta.CCI(d.high, d.low, d.close, timeperiod=14)
+        d["CCI_7"] = ta.CCI(d.high, d.low, d.close, timeperiod=7)
         d["CCI_4"] = ta.CCI(d.high, d.low, d.close, timeperiod=4)
         d["MFI_10"] = ta.MFI(d.high, d.low, d.close, d.volume, timeperiod=10)
         d["MFI_3"] = ta.MFI(d.high, d.low, d.close, d.volume, timeperiod=3)
@@ -55,6 +87,7 @@ def calculate(name,start,end,):
         d["RSI_14"]=ta.RSI(d.close, timeperiod=14)
         d["RSI_5"]=ta.RSI(d.close, timeperiod=5)
         d["RSI_3"]=ta.RSI(d.close, timeperiod=3)
+        d["ROC_14"] = ta.ROC(d.close, timeperiod=14)
         d["ROC_7"] = ta.ROC(d.close, timeperiod=7)
         d["ROC_3"] = ta.ROC(d.close, timeperiod=3)
         d["ADOSC_3"] = ta.ADOSC(d.high, d.low, d.close, d.volume, fastperiod=3, slowperiod=10)
@@ -96,8 +129,10 @@ class Trainer:
     def apply_row(self,row):
         # if row['y'] > 2:
         #     return 2
-        if row['y'] > 3:
+        if row['y'] >0:
             return 1
+        # elif row['y'] <-3:
+        #     return 1
         else:
             return 0
     
@@ -109,8 +144,12 @@ class Trainer:
         parameters = {
             'task': 'train',
             'boosting_type': 'gbdt',  # 设置提升类型
+            # 'objective': 'multiclass',
+            # 'num_class':3,
+            # 'metric':'multi_logloss',# 评估函数
+
             'objective': 'binary',  # 目标函数
-            'metric':{'binary_logloss', 'auc'}, # 评估函数
+            'metric':{'binary_logloss',"auc"},
             'num_leaves': 8,  # 叶子节点数
             'learning_rate': 0.01,  # 学习速率
             'feature_fraction': 0.9,  # 建树的特征选择比例
@@ -119,22 +158,24 @@ class Trainer:
             'verbose': 0,  # <0 显示致命的, =0 显示错误 (警告), >0 显示信息
             "lambda_l1": 0.1,
             "nthread": 16,
+            "is_unbalance":"true"
 
         }
         evals_result = {}
         gbm_model = lgb.train(parameters,
                               train,
                               valid_sets=[train, test],
-                              num_boost_round=70000,  # 提升迭代的次数
+                              num_boost_round=50000,  # 提升迭代的次数
                               evals_result=evals_result,
-                              verbose_eval=200
+                              verbose_eval=200,
+                            #   class_weight="balanced",
+                              
                               )
         gbm_model.save_model(self.save_path)
 
 
 if __name__=="__main__":
     data = calculate("中证800","2015-01-01","2022-01-01")
-
     print(len(data))
-    train = Trainer(data,"./checkpoint/lgb3.pt")
+    train = Trainer(data,"./checkpoint/lgb5.pt")
     train.train()

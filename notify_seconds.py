@@ -1,15 +1,12 @@
 
 from getdata import getdata
-from test import test
+from test01 import test
 from backtest import backtest
 import smtplib
 from email.mime.text import MIMEText
 from email.header import Header
 import time
-from modelLgbm2 import ModelLgbm
-import pandas as pd
-from utils.wechart import send_wechat
-
+import datetime
 def email(addresser, recipient,subject, content):
     sender = '1318930007@qq.com'
     receivers = ['chyao7@163.com']  # 接收邮件，可设置为你的QQ邮箱或者其他邮箱
@@ -31,31 +28,33 @@ def email(addresser, recipient,subject, content):
 
 def notified():
     getdata()
-    model = ModelLgbm(checkpoint="./checkpoint/labmres.pt",test_name="沪深300")
-    # train.train()
-    model.test()
-
-    data = pd.read_csv("./result.csv")
+    data = test()
     today = time.strftime("%Y-%m-%d", time.localtime())
-    print(today)
     data = data[data["date"]==today]
-
+    print(data)
     rec = []
     for i,cont in data.iterrows():
-        rec.append(f"{cont.code}_{cont.res}")
-    recnews = "\n".join(rec)
-    print(recnews)
-    email("system","chyao",f"{today}-recommend",recnews)
-    send_wechat(recnews)
-    # send_wechat("sssssssssss")
+        if cont.res>0.85:
+            rec.append(f"{cont.code}_{cont.res}_{cont.close}")     
+    if rec:
+        recnews = "\n".join(rec)
+        print(recnews)
+        email("system","chyao",f"{today}-recommend",recnews)
+
 
 if __name__ == '__main__':
     import schedule
-    notified()
-    schedule.every().day.at("20:30").do(notified)
-    schedule.every().day.at("14:49").do(notified)
-    schedule.every().day.at("14:54").do(notified)
-
+    schedule.every(600).seconds.do(notified)
+    # schedule.every().day.at("20:30").do(notified)
+    # schedule.every().day.at("14:50").do(notified)
+    d_time = datetime.datetime.strptime(str(datetime.datetime.now().date()) + '9:30', '%Y-%m-%d%H:%M')
+    d_time1 = datetime.datetime.strptime(str(datetime.datetime.now().date()) + '11:30', '%Y-%m-%d%H:%M')
+    d_time2 = datetime.datetime.strptime(str(datetime.datetime.now().date()) + '13:00', '%Y-%m-%d%H:%M')
+    d_time3 = datetime.datetime.strptime(str(datetime.datetime.now().date()) + '15:00', '%Y-%m-%d%H:%M')
+    # 当前时间
     while True:
-        schedule.run_pending()
-        time.sleep(60)
+        n_time = datetime.datetime.now()
+
+        if (n_time > d_time and n_time < d_time1) or (n_time > d_time2 and n_time < d_time3) : 
+            schedule.run_pending()
+        time.sleep(1)

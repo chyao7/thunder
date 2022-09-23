@@ -19,7 +19,6 @@ def calculate(name,start,end,):
         d['date'] = pd.to_datetime(d['date'])
         d = d.set_index('date')
         d = d[start:end]
-        # d = d['2017-01-01':'2022-01-01']
         d = d.dropna()
         if len(d)<100:
             return
@@ -69,12 +68,12 @@ def calculate(name,start,end,):
 def test():
     model_path = "./checkpoint/lgb2.pt"
     model = lgb.Booster(model_file=model_path)
-    data = calculate("中证200","2022-01-01","2022-08-30")
+    data = calculate("中证200","2022-01-01","2023-01-01")
     data = data.reset_index()
     pre = np.array(data)[:,1:-1]
     res = model.predict(pre)
     data["res"] = res
-    data = data[["date","code","res"]]
+    data = data[["date","code","res","close"]]
     data["code"]= data["code"].apply(lambda x:"%06d" %x)
     data.sort_values(by=["date", "res"], ascending=[True, False], inplace=True)
     d = data.groupby("date").head(3)
